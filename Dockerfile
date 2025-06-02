@@ -1,17 +1,20 @@
-# Usar imagen con Java 17
-FROM eclipse-temurin:17-jdk
+# Primera etapa: construcción con Maven
+FROM maven:3.8.6-eclipse-temurin-17 AS builder
 
-# Crear directorio de trabajo
+WORKDIR /app
+COPY . .
+RUN mvn clean package
+
+# Segunda etapa: imagen final más pequeña
+FROM eclipse-temurin:17-jre
+
 WORKDIR /app
 
-# Copiar el código fuente
-COPY ServidorTheRacoonbank.java .
+# Copia el JAR construido desde la etapa de construcción
+COPY --from=builder /app/target/ServidorTheRacoonbank.jar .
 
-# Compilar el servidor (usando javac directamente)
-RUN javac ServidorTheRacoonbank.java
-
-# Puerto que usa tu servidor
+# Puerto que usa tu aplicación
 EXPOSE 12345
 
 # Comando para ejecutar
-CMD ["java", "ServidorTheRacoonbank"]
+CMD ["java", "-jar", "ServidorTheRacoonbank.jar"]
