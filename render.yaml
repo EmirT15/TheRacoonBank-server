@@ -1,0 +1,6 @@
+services:
+  - name: theracoonbank-server
+    type: web
+    runtime: docker
+    port: 12345
+    plan: free
