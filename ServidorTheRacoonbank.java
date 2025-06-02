@@ -106,34 +106,33 @@ public class ServidorTheRacoonbank {
             try (BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PrintWriter salida = new PrintWriter(socket.getOutputStream(), true)) {
                 
-                // Verifica si es una petición HTTP
-                String primeraLinea = entrada.readLine();
-                if (primeraLinea != null && primeraLinea.startsWith("HEAD") || primeraLinea.startsWith("GET")) {
-                    // Respuesta simple para health checks
-                    salida.println("HTTP/1.1 200 OK\r\n\r\n");
-                    socket.close();
-                    return;
-                }
-
-                // Procesamiento normal de tus comandos
-                String mensaje = primeraLinea;
-                while ((mensaje = entrada.readLine()) != null) {
-                    System.out.println("Comando recibido: " + mensaje);
-                    String respuesta = procesarMensaje(mensaje);
-                    salida.println(respuesta);
+                String mensaje;
+                while ((mensaje = entrada.readLine()) != null) {  // Verificación null aquí
+                    try {
+                        System.out.println("Recibido: " + mensaje);
+                        String respuesta = procesarMensaje(mensaje);
+                        salida.println(respuesta);
+                    } catch (Exception e) {
+                        System.err.println("Error procesando mensaje: " + e.getMessage());
+                        salida.println("ERROR|Error interno del servidor");
+                    }
                 }
             } catch (IOException e) {
-                System.err.println("Error con cliente: " + e.getMessage());
+                System.err.println("Error de conexión con cliente: " + e.getMessage());
             } finally {
                 try {
                     socket.close();
                 } catch (IOException e) {
-                    System.err.println("Error al cerrar socket: " + e.getMessage());
+                    System.err.println("Error cerrando socket: " + e.getMessage());
                 }
             }
         }
 
         private String procesarMensaje(String mensaje) {
+            if (mensaje == null || mensaje.trim().isEmpty()) {
+                return "ERROR|Mensaje vacío";
+            }
+
             String[] partes = mensaje.split("\\|");
             String comando = partes[0];
 
