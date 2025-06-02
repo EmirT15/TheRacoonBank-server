@@ -103,28 +103,32 @@ public class ServidorTheRacoonbank {
 
         @Override
         public void run() {
-            BufferedReader entrada = null;
-            PrintWriter salida = null;
+            try (BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter salida = new PrintWriter(socket.getOutputStream(), true)) {
+                
+                // Verifica si es una petición HTTP
+                String primeraLinea = entrada.readLine();
+                if (primeraLinea != null && primeraLinea.startsWith("HEAD") || primeraLinea.startsWith("GET")) {
+                    // Respuesta simple para health checks
+                    salida.println("HTTP/1.1 200 OK\r\n\r\n");
+                    socket.close();
+                    return;
+                }
 
-            try {
-                entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                salida = new PrintWriter(socket.getOutputStream(), true);
-
-                String mensaje;
+                // Procesamiento normal de tus comandos
+                String mensaje = primeraLinea;
                 while ((mensaje = entrada.readLine()) != null) {
-                    System.out.println("Recibido: " + mensaje);
+                    System.out.println("Comando recibido: " + mensaje);
                     String respuesta = procesarMensaje(mensaje);
                     salida.println(respuesta);
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Error con cliente: " + e.getMessage());
             } finally {
                 try {
-                    if (entrada != null) entrada.close();
-                    if (salida != null) salida.close();
-                    if (socket != null && !socket.isClosed()) socket.close();
+                    socket.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    System.err.println("Error al cerrar socket: " + e.getMessage());
                 }
             }
         }

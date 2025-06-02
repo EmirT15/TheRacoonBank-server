@@ -4,3 +4,4 @@ services:
     runtime: docker
     port: 12345
     plan: free
+    healthCheckPath: /health
