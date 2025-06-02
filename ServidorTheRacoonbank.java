@@ -4,7 +4,7 @@ import java.sql.*;
 import org.sqlite.JDBC;
 
 public class ServidorTheRacoonbank {
-    private static final int PUERTO = Integer.parseInt(System.getenv().getOrDefault("PORT", "12345"));
+    private static final int PUERTO = Integer.parseInt(System.getenv().getOrDefault("PORT", "10000"));
     private static Connection conexionBD;
     private static ServerSocket serverSocket;
     private static volatile boolean ejecutando = true;
