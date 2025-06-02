@@ -27,17 +27,21 @@ public class ServidorTheRacoonbank {
             conectarBD();
             crearTablasSiNoExisten();
 
-            // Reemplaza la línea del ServerSocket por esto:
-            serverSocket = new ServerSocket(PUERTO, 0, InetAddress.getByName("0.0.0.0"));
-            System.out.println("Servidor iniciado en 0.0.0.0: " + PUERTO);
+            serverSocket = new ServerSocket(PUERTO);
+            System.out.println("Servidor iniciado en el puerto " + PUERTO);
 
             while (ejecutando) {
                 try {
                     Socket clientSocket = serverSocket.accept();
+                    // Configurar timeout para desconexiones silenciosas
+                    clientSocket.setSoTimeout(30000); // 30 segundos
+                    
                     new Thread(new ManejadorCliente(clientSocket)).start();
-                } catch (SocketException e) {
+                } catch (SocketTimeoutException e) {
+                    // Timeout normal durante accept()
+                } catch (IOException e) {
                     if (ejecutando) {
-                        e.printStackTrace();
+                        System.err.println("Error aceptando conexión: " + e.getMessage());
                     }
                 }
             }
@@ -70,10 +74,8 @@ public class ServidorTheRacoonbank {
 
     private static void conectarBD() throws SQLException {
         // Asegurarse de que la URL de conexión es correcta
-        String dbUrl = "jdbc:sqlite:/app/data/finanzas.db";
-        conexionBD = DriverManager.getConnection(dbUrl);
-    
-        System.out.println("Conectado a SQLite en: " + dbUrl);
+        conexionBD = DriverManager.getConnection("jdbc:sqlite:finanzas.db");
+        System.out.println("Conectado a SQLite correctamente");
     }
 
     private static void crearTablasSiNoExisten() throws SQLException {
@@ -106,33 +108,49 @@ public class ServidorTheRacoonbank {
             try (BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PrintWriter salida = new PrintWriter(socket.getOutputStream(), true)) {
                 
-                String mensaje;
-                while ((mensaje = entrada.readLine()) != null) {  // Verificación null aquí
-                    try {
-                        System.out.println("Recibido: " + mensaje);
-                        String respuesta = procesarMensaje(mensaje);
-                        salida.println(respuesta);
-                    } catch (Exception e) {
-                        System.err.println("Error procesando mensaje: " + e.getMessage());
-                        salida.println("ERROR|Error interno del servidor");
-                    }
+                // Leer primera línea para determinar el tipo de conexión
+                String primeraLinea = entrada.readLine();
+                if (primeraLinea == null) {
+                    return; // Conexión cerrada sin datos
+                }
+
+                // Manejar health checks de Render
+                if (primeraLinea.startsWith("HEAD ") || primeraLinea.startsWith("GET ")) {
+                    handleHealthCheck(salida);
+                    return;
+                }
+
+                // Procesar comandos normales del protocolo TheRacoonBank
+                String respuesta = procesarMensaje(primeraLinea);
+                salida.println(respuesta);
+
+                // Procesar líneas adicionales si existen (para sesiones multi-comando)
+                String lineaAdicional;
+                while ((lineaAdicional = entrada.readLine()) != null) {
+                    respuesta = procesarMensaje(lineaAdicional);
+                    salida.println(respuesta);
                 }
             } catch (IOException e) {
-                System.err.println("Error de conexión con cliente: " + e.getMessage());
+                System.err.println("Error con cliente " + socket.getInetAddress() + ": " + e.getMessage());
             } finally {
                 try {
                     socket.close();
                 } catch (IOException e) {
-                    System.err.println("Error cerrando socket: " + e.getMessage());
+                    System.err.println("Error al cerrar socket: " + e.getMessage());
                 }
             }
         }
 
-        private String procesarMensaje(String mensaje) {
-            if (mensaje == null || mensaje.trim().isEmpty()) {
-                return "ERROR|Mensaje vacío";
-            }
+        private void handleHealthCheck(PrintWriter salida) {
+            // Respuesta simple para health checks de Render
+            salida.println("HTTP/1.1 200 OK\r\n");
+            salida.println("Content-Type: text/plain\r\n");
+            salida.println("\r\n");
+            salida.println("OK");
+            salida.flush();
+        }
 
+        private String procesarMensaje(String mensaje) {
             String[] partes = mensaje.split("\\|");
             String comando = partes[0];
 
