@@ -1,20 +1,19 @@
-# Primera etapa: construcción con Maven
-FROM maven:3.8.6-eclipse-temurin-17 AS builder
-
-WORKDIR /app
-COPY . .
-RUN mvn clean package
-
-# Segunda etapa: imagen final más pequeña
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
-# Copia el JAR construido desde la etapa de construcción
-COPY --from=builder /app/target/ServidorTheRacoonbank.jar .
+# 1. Copia el código fuente y la librería específica
+COPY ServidorTheRacoonbank.java .
+COPY lib/sqlite-jdbc-3.49.1.0.jar /app/lib/sqlite-jdbc.jar
 
-# Puerto que usa tu aplicación
+# 2. Compilación con la versión específica
+RUN javac -cp lib/sqlite-jdbc.jar ServidorTheRacoonbank.java
+
+# 3. Puerto expuesto
 EXPOSE 12345
 
-# Comando para ejecutar
-CMD ["java", "-jar", "ServidorTheRacoonbank.jar"]
+# 4. Comando de ejecución (asegúrate que coincida con tu clase principal)
+CMD ["java", "-cp", ".:lib/sqlite-jdbc.jar", "ServidorTheRacoonbank"]
+
+# Añade al final del Dockerfile
+VOLUME /app/data

@@ -70,8 +70,10 @@ public class ServidorTheRacoonbank {
 
     private static void conectarBD() throws SQLException {
         // Asegurarse de que la URL de conexión es correcta
-        conexionBD = DriverManager.getConnection("jdbc:sqlite:finanzas.db");
-        System.out.println("Conectado a SQLite correctamente");
+        String dbUrl = "jdbc:sqlite:/app/data/finanzas.db";
+        conexionBD = DriverManager.getConnection(dbUrl);
+    
+        System.out.println("Conectado a SQLite en: " + dbUrl);
     }
 
     private static void crearTablasSiNoExisten() throws SQLException {
